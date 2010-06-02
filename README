@@ -1,0 +1,8 @@
+Disco is a command line XMPP service discovery browser.
+
+Usage:
+    $ disco info target@example.com/foo [node]
+    $ disco items target@example.com/foo [node]
+
+Dependencies:
+- SleekXMPP 1.0.

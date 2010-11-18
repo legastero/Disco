@@ -121,6 +121,12 @@ if __name__ == '__main__':
                     dest='loglevel', 
                     const=5, 
                     default=logging.ERROR)
+
+    # JID and password options.
+    optp.add_option("-j", "--jid", dest="jid",
+                    help="JID to use")
+    optp.add_option("-p", "--password", dest="password",
+                    help="password to use")
     opts,args = optp.parse_args()
     
     logging.basicConfig(level=opts.loglevel, format='%(levelname)-8s %(message)s')
@@ -132,10 +138,12 @@ if __name__ == '__main__':
     if len(args) == 2:
         args = (args[0], args[1], '')
 
-    username = raw_input("Username: ")
-    password = getpass.getpass("Password: ")
+    if opts.jid is None:
+        opts.jid = raw_input("Username: ")
+    if opts.password is None:
+        opts.password = getpass.getpass("Password: ")
 
-    xmpp = Disco(username, password, args[1], args[2], args[0])
+    xmpp = Disco(opts.jid, opts.password, args[1], args[2], args[0])
     xmpp.registerPlugin('xep_0030')	
     if xmpp.connect():
         xmpp.process(threaded=False)

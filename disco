@@ -33,15 +33,21 @@ from optparse import OptionParser
 
 
 class Disco(sleekxmpp.ClientXMPP):
+
+    """
+    Sends a disco#info and disco#items request to a JID/node combination,
+    and prints out the results.
+
+    May also request only particular info categories such as just features,
+    or just items.
+    """
     
-    def __init__(self, jid, password, target, target_node='main', get=''):
+    def __init__(self, jid, password, target_jid, target_node='main', get=''):
         sleekxmpp.ClientXMPP.__init__(self, jid, password)
         self.add_event_handler("session_start", self.start)
-        self.add_event_handler("disco_info", self.disco_info)
-        self.add_event_handler("disco_items", self.disco_items)
 
         self.get = get
-        self.target = target
+        self.target_jid = target_jid
         self.target_node = target_node
         self.results = {'identities': None,
                         'features': None,
@@ -57,54 +63,50 @@ class Disco(sleekxmpp.ClientXMPP):
         self.getRoster()
         self.sendPresence()
         if self.get in self.info_types:
-            self['xep_0030'].getInfo(self.target, node=self.target_node)
-        elif self.get in self.items_types:
-            self['xep_0030'].getItems(self.target, node=self.target_node)
+            info = self['xep_0030'].get_info(jid=self.target_jid, 
+                                             node=self.target_node,
+                                             block=True)
+            self.results['identities'] = info['disco_info']['identities']
+            self.results['features'] = info['disco_info']['features']
+        if self.get in self.items_types:
+            items = self['xep_0030'].get_items(jid=self.target_jid, 
+                                               node=self.target_node,
+                                               block=True)
+            self.results['items'] = items['disco_items']['items']
         else:
             logging.error("Invalid disco request type.")
             self.disconnect()
-        
-    def disco_info(self, iq):
-        self.results['identities'] = iq['disco_info'].getIdentities()
-        self.results['features'] = iq['disco_info'].getFeatures()
-        if self.get in self.items_types:
-            self['xep_0030'].getItems(self.target, node=self.target_node)
-        else:
-            self.print_results()
 
-    def disco_items(self, iq):
-        self.results['items'] = iq['disco_items'].getItems()
-        self.print_results()
-
-    def print_results(self):
-        header = 'XMPP Service Discovery: %s' % self.target
-        print header
-        print '-' * len(header)
+        header = 'XMPP Service Discovery: %s' % self.target_jid
+        print(header)
+        print('-' * len(header))
         if self.target_node != '':
-            print 'Node: %s' % self.target_node
-            print '-' * len(header)
+            print('Node: %s' % self.target_node)
+            print('-' * len(header))
 
         if self.get in self.identity_types:
-            print 'Identities:'
+            print('Identities:')
             for identity in self.results['identities']:
-                print '  - ', identity
+                print('  - ', identity)
 
         if self.get in self.feature_types:
-            print 'Features:'
+            print('Features:')
             for feature in self.results['features']:
-                print '  - %s' % feature
+                print('  - %s' % feature)
 
         if self.get in self.items_types:
-            print 'Items:'
+            print('Items:')
             for item in self.results['items']:
-                print '  - %s' % str(item)
+                print('  - %s' % str(item))
 
         self.disconnect()
 
+
 if __name__ == '__main__':
     optp = OptionParser()
-    optp.usage = "Usage: %prog [options] info|items|identities|features <jid> [<node>]"
     optp.version = '%%prog 0.1'
+    optp.usage = "Usage: %%prog [options] %s <jid> [<node>]" % \
+                             'all|info|items|identities|features'
 
     optp.add_option('-q','--quiet', help='set logging to ERROR', 
                     action='store_const', 
